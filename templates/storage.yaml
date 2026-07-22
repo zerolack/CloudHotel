@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudHotel Storage Infrastructure
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: CloudHotel
+
+Resources:
+  HotelStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${EnvironmentName}-storage-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-StorageBucket"
+Outputs:
+  StorageBucketName:
+    Description: S3 bucket name for CloudHotel storage
+    Value: !Ref HotelStorageBucket
+
+  StorageBucketArn:
+    Description: S3 bucket ARN
+    Value: !GetAtt HotelStorageBucket.Arn
