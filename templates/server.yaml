@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
+
 Description: CloudHotel Server Infrastructure
 
 Parameters:
@@ -19,39 +20,25 @@ Parameters:
     Description: Public subnet 2
 
 Resources:
-  LoadBalancerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow HTTP and HTTPS traffic to Load Balancer
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: !Sub "${EnvironmentName}-ALB-SG"
+
   WebServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow web traffic from Load Balancer
+      GroupDescription: Enable HTTP access
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub "${EnvironmentName}-WebServer-SG"
+          Value: !Sub "${EnvironmentName}-WebServerSG"
+
   EC2Role:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub "${EnvironmentName}-EC2Role"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -62,8 +49,7 @@ Resources:
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-      Path: /
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -75,6 +61,7 @@ Resources:
     Properties:
       LaunchTemplateName: !Sub "${EnvironmentName}-LaunchTemplate"
       LaunchTemplateData:
+        KeyName: Schoolapp
         ImageId: ami-0c02fb55956c7d316
         InstanceType: t3.micro
         SecurityGroupIds:
@@ -89,17 +76,7 @@ Resources:
             systemctl start httpd
             systemctl enable httpd
             echo "CloudHotel Server Running" > /var/www/html/index.html
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    Properties:
-      Name: !Sub "${EnvironmentName}-ALB"
-      Scheme: internet-facing
-      Type: application
-      SecurityGroups:
-        - !Ref LoadBalancerSecurityGroup
-      Subnets:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
+
   WebAppTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -107,12 +84,21 @@ Resources:
       Port: 80
       Protocol: HTTP
       VpcId: !Ref VPC
-      HealthCheckEnabled: true
       HealthCheckPath: /
-      Matcher:
-        HttpCode: 200-399
       TargetType: instance
-  ALBListener:
+    ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${EnvironmentName}-ALB"
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref WebServerSecurityGroup
+
+  HTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
@@ -121,6 +107,7 @@ Resources:
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref WebAppTargetGroup
+
   WebAppAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
@@ -137,7 +124,9 @@ Resources:
         - !Ref WebAppTargetGroup
       HealthCheckType: ELB
       HealthCheckGracePeriod: 300
+
 Outputs:
+
   LoadBalancerDNS:
     Description: DNS name of the Application Load Balancer
     Value: !GetAtt ApplicationLoadBalancer.DNSName

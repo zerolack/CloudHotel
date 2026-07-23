@@ -67,7 +67,7 @@ Resources:
       MultiAZ: false
       PubliclyAccessible: false
       StorageType: gp3
-      BackupRetentionPeriod: 7
+      BackupRetentionPeriod: 0
 Outputs:
   DatabaseEndpoint:
     Description: RDS MySQL database endpoint

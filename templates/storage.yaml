@@ -10,7 +10,7 @@ Resources:
   HotelStorageBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${EnvironmentName}-storage-${AWS::AccountId}"
+      BucketName: !Sub "cloudhotel-storage-${AWS::AccountId}"
       VersioningConfiguration:
         Status: Enabled
       Tags:
@@ -18,7 +18,7 @@ Resources:
           Value: !Sub "${EnvironmentName}-StorageBucket"
 Outputs:
   StorageBucketName:
-    Description: S3 bucket name for CloudHotel storage
+    Description: S3 bucket name for hloudHotel storage
     Value: !Ref HotelStorageBucket
 
   StorageBucketArn:
